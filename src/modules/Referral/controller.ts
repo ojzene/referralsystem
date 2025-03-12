@@ -52,6 +52,15 @@ export class ReferralController extends BaseController {
         }
     }
 
+    public getTransactionType = async () => {
+        try {
+            return await this._referralService.getTransactionType();
+        } catch (error) {
+            return this.sendResponse(error);
+        }
+    }
+
+
     public deleteTransactionType = async (parsedParams: any) => {
         try {
             return await this._referralService.deleteTransactionType(parsedParams);
@@ -95,6 +104,14 @@ export class ReferralController extends BaseController {
     public getGifts = async () => {
         try {
             return await this._referralService.getGifts();
+        } catch (error) {
+            return this.sendResponse(error);
+        }
+    }
+
+    public getTransactions = async () => {
+        try {
+            return await this._referralService.getTransactions();
         } catch (error) {
             return this.sendResponse(error);
         }

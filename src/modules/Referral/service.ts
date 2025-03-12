@@ -62,7 +62,7 @@ export class ReferralService {
         if (!userId || !transactionType || !amount || !beneficiaryId) {
             return { success: false, statusCode: 400, message: 'Missing required fields' };
         }
-        
+
         // find if transaction type is in transactionModel
         const transactionTypeModel = await TransactionTypeModel.findOne({ name: transactionType });
         if (!transactionTypeModel) {
@@ -174,6 +174,16 @@ export class ReferralService {
         }
     }
 
+    public getTransactionType = async () => {
+        try {
+            const transactionTypes = await TransactionTypeModel.find();
+            return { success: true, statusCode: 200, message: 'Transaction Type successfully fetched', data: transactionTypes };
+        } catch (error) {
+            return { success: false, statusCode: 500, message: 'Error fetching transaction type', data: error };
+        } 
+    }
+
+
     public deleteTransactionType = async(parsedParams: any) => {
         const { transactionTypeId } = parsedParams;
         try {
@@ -265,9 +275,19 @@ export class ReferralService {
         } 
     }
 
+    public getTransactions = async () => {
+        try {
+            const transaction = await TransactionModel.find();
+            return { success: true, statusCode: 200, message: 'Transactions successfully fetched', data: transaction };
+        } catch (error) {
+            return { success: false, statusCode: 500, message: 'Error fetching transaction', data: error };
+        } 
+    }
+
     // Function to Calculate Points Dynamically
     private calculatePoints = async (transactionType: any, amount: any) => {
         const rules = await PointRulesModel.find({ type: transactionType });
+        console.log("point rules: ", rules);
         for (const rule of rules) {
             if (amount >= rule.minAmount && (!rule.maxAmount || amount <= rule.maxAmount)) {
                 return rule.points;
