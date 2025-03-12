@@ -16,14 +16,14 @@ const pointSchema = new Schema<IPoint>({
 });
 
 const pointRulesSchema = new Schema<IPointRules>({
-    type: { type: String, required: true },
+    type: { type: String, required: true, toLowerCase: true },
     minAmount: { type: Number, required: true },
     maxAmount: { type: Number },
     points: { type: Number, required: true }
   });
 
 const transactionTypeSchema = new Schema<ITransactionType>({
-    name: { type: String, required: true },
+    name: { type: String, required: true, toLowerCase: true },
     description: { type: String, required: false },
     createdAt: { type: Date, default: Date.now },
 });
@@ -33,7 +33,8 @@ const transactionSchema = new Schema<ITransaction>({
     transactionType: { type: String, required: true },
     amount: { type: Number, required: true },
     pointsEarned: { type: Number, required: true },
-    beneficiaryId: { type: String, required: true },
+    beneficiaryId: { type: String, required: false },
+    extraField: [{ type: String, required: false }],
     createdAt: { type: Date, default: Date.now },
 });
 

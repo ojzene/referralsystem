@@ -60,6 +60,21 @@ export class ReferralController extends BaseController {
         }
     }
 
+    public createPointRules = async (parsedBody: any) => {
+        try {
+            return await this._referralService.createPointRules(parsedBody);
+        } catch (error) {
+            return this.sendResponse(error);
+        }
+    }
+
+    public deletePointRules = async (parsedParams: any) => {
+        try {
+            return await this._referralService.deletePointRules(parsedParams);
+        } catch (error) {
+            return this.sendResponse(error);
+        }
+    }
 
     public deleteTransactionType = async (parsedParams: any) => {
         try {
@@ -104,6 +119,14 @@ export class ReferralController extends BaseController {
     public getGifts = async () => {
         try {
             return await this._referralService.getGifts();
+        } catch (error) {
+            return this.sendResponse(error);
+        }
+    }
+
+    public getUserPoints = async () => {
+        try {
+            return await this._referralService.getUserPoints();
         } catch (error) {
             return this.sendResponse(error);
         }

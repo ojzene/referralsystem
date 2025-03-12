@@ -54,7 +54,7 @@ export class ReferralService {
     }
 
     public recordTransaction = async (parsedBody: any) => {
-        const { userId, transactionType, amount, beneficiaryId } = parsedBody;
+        const { userId, transactionType, amount, beneficiaryId, extraField } = parsedBody;
 
         const parsedAmount = parseFloat(amount);
         console.log('parsedAmount: ', parsedAmount);
@@ -78,6 +78,7 @@ export class ReferralService {
                 userId,
                 transactionType,
                 beneficiaryId,
+                extraField,
                 createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
             });
 
@@ -183,13 +184,52 @@ export class ReferralService {
         } 
     }
 
-
     public deleteTransactionType = async(parsedParams: any) => {
         const { transactionTypeId } = parsedParams;
         try {
             const transactionType = await TransactionTypeModel.findByIdAndDelete(transactionTypeId);
             if (!transactionType) return { success: false, statusCode: 404, message: 'Transaction Type not found' };
             return { success: true, statusCode: 200, message: 'Transaction Type deleted successfully' };
+        } catch (error) {
+            return { success: false, statusCode: 500, message: 'Error deleting transaction type', data: error };
+        }
+    }
+
+    public createPointRules = async(parsedBody: any) => {
+        const { transactionTypeId, minAmount, maxAmount, points } = parsedBody;
+        try {
+            const transactionType = await TransactionTypeModel.findById(transactionTypeId);
+            if(transactionType) {
+                if(points == 0) return { success: false, statusCode: 404, message: 'Point cannot be equal to zero' };
+                if(minAmount >= maxAmount) return { success: false, statusCode: 404, message: 'Minimum amount cannot be more than maximum amount' };
+
+                const existingRule = await PointRulesModel.findOne({ type: transactionType?.name, minAmount, maxAmount });
+                if(existingRule) return { success: false, statusCode: 400, message: 'Rule already exists' };
+
+                const pointrules = new PointRulesModel({
+                    type: transactionType?.name,
+                    minAmount,
+                    maxAmount,
+                    points
+                });
+                await pointrules.save();
+
+                return { success: true, statusCode: 200, message: 'Point rule set successfully', data: pointrules };
+            } else {
+                return { success: false, statusCode: 404, message: 'Transaction Type not found' };
+            }
+        } catch (error) {
+            return { success: false, statusCode: 500, message: 'Error processing point rules', data: error };
+        }
+    }
+
+    public deletePointRules = async(parsedParams: any) => {
+        const { transactionTypeId } = parsedParams;
+        try {
+            const transactionType = await TransactionTypeModel.findById(transactionTypeId);
+            if (!transactionType) return { success: false, statusCode: 404, message: 'Transaction Type not found' };
+            const pointRules = await PointRulesModel.findByIdAndDelete({ type: transactionTypeId });
+            return { success: true, statusCode: 200, message: 'Point rules deleted successfully', data: pointRules };
         } catch (error) {
             return { success: false, statusCode: 500, message: 'Error deleting transaction type', data: error };
         }
@@ -281,6 +321,15 @@ export class ReferralService {
             return { success: true, statusCode: 200, message: 'Transactions successfully fetched', data: transaction };
         } catch (error) {
             return { success: false, statusCode: 500, message: 'Error fetching transaction', data: error };
+        } 
+    }
+
+    public getUserPoints = async () => {
+        try {
+            const point = await PointModel.find();
+            return { success: true, statusCode: 200, message: 'Points successfully fetched', data: point };
+        } catch (error) {
+            return { success: false, statusCode: 500, message: 'Error fetching poitnd', data: error };
         } 
     }
 

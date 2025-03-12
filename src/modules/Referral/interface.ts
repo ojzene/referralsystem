@@ -30,6 +30,7 @@ export interface ITransaction {
     amount: number;
     pointsEarned: number;
     beneficiaryId: string;
+    extraField: any;
     createdAt: any;
 }
 
