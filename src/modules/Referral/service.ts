@@ -10,6 +10,8 @@ export class ReferralService {
         if (!referrerId || !referredUserId || !customerTier) {
             return { success: false, statusCode: 400, message: 'Missing required fields' };
         }
+
+        
         
         const tierPoints = { bronze: 10, silver: 20, gold: 30 };
         const points = tierPoints[customerTier] || 0;
@@ -63,6 +65,11 @@ export class ReferralService {
             return { success: false, statusCode: 400, message: 'Missing required fields' };
         }
 
+        const userModel = await PocketUserModel.findById(userId);
+        if (!userModel) {
+            return { success: false, statusCode: 400, message: 'User not found' };
+        }
+
         // find if transaction type is in transactionModel
         const transactionTypeModel = await TransactionTypeModel.findOne({ name: transactionType });
         if (!transactionTypeModel) {
@@ -87,6 +94,7 @@ export class ReferralService {
             }
 
             const transaction = new TransactionModel({
+                referrerId: userModel?.referralCode,
                 userId,
                 transactionType,
                 amount,
@@ -326,12 +334,29 @@ export class ReferralService {
 
     public getUserPoints = async () => {
         try {
-            const point = await PointModel.find().populate({ 'path': 'userId' });
-            return { success: true, statusCode: 200, message: 'Points successfully fetched', data: point };
+            const points = await PointModel.find()
+                .populate({
+                    path: 'userId',
+                    model: 'PocketUser', // Ensure this matches your User model name
+                    select: 'firstName lastName email phoneNumber', // Specify the fields you need
+                });
+    
+            return { 
+                success: true, 
+                statusCode: 200, 
+                message: 'Points successfully fetched', 
+                data: points 
+            };
         } catch (error) {
-            return { success: false, statusCode: 500, message: 'Error fetching poitnd', data: error };
+            return { 
+                success: false, 
+                statusCode: 500, 
+                message: 'Error fetching points', 
+                data: error 
+            };
         } 
     }
+    
 
     // Function to Calculate Points Dynamically
     private calculatePoints = async (transactionType: any, amount: any) => {

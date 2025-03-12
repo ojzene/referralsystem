@@ -25,6 +25,7 @@ export interface ITransactionType {
 }
 
 export interface ITransaction {
+    referrerId: any;
     userId: any;
     transactionType: any;
     amount: number;

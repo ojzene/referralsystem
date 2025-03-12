@@ -13,7 +13,7 @@ const referralSchema = new Schema<IReferral>({
 });
 
 const pointSchema = new Schema<IPoint>({
-    userId: { type: ObjectId, ref: 'User', required: true },
+    userId: { type: ObjectId, ref: 'PocketUser', required: true },
     // userId: { type: String, required: true, unique: true },
     totalPoints: { type: Number, default: 0 },
 });
@@ -32,7 +32,8 @@ const transactionTypeSchema = new Schema<ITransactionType>({
 });
 
 const transactionSchema = new Schema<ITransaction>({
-    userId: { type: String, required: true },
+    referrerId: { type: String, required: false },
+    userId: { type: ObjectId, ref: 'PocketUser', required: true },
     transactionType: { type: String, required: true },
     amount: { type: Number, required: true },
     pointsEarned: { type: Number, required: true },
