@@ -62,13 +62,9 @@ export class ReferralService {
         if (!userId || !transactionType || !amount || !beneficiaryId) {
             return { success: false, statusCode: 400, message: 'Missing required fields' };
         }
-
-        // if(!['transaction', 'bills', 'credit'].includes(transactionType)) {
-        //     return { success: false, statusCode: 400, message: 'Invalid transaction type' };
-        // }
-
+        
         // find if transaction type is in transactionModel
-        const transactionTypeModel = await TransactionTypeModel.findOne({ type: transactionType });
+        const transactionTypeModel = await TransactionTypeModel.findOne({ name: transactionType });
         if (!transactionTypeModel) {
             return { success: false, statusCode: 400, message: 'Invalid transaction type' };
         }
