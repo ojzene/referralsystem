@@ -18,7 +18,7 @@ export class ReferralService {
         
         try {
             // check if referrerId exists in ReferralModel
-            const referrer = await PocketUserModel.findOne({ referralId: referrerId });
+            const referrer = await PocketUserModel.findOne({ referralCode: referrerId });
             if (!referrer) {
                 console.log("Could not find referrer for: " + referredUserId);
                 return { success: false, statusCode: 400, message: 'Referrer not found' };
