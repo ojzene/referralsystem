@@ -326,7 +326,7 @@ export class ReferralService {
 
     public getUserPoints = async () => {
         try {
-            const point = await PointModel.find();
+            const point = await PointModel.find().populate({ 'path': 'userId' });
             return { success: true, statusCode: 200, message: 'Points successfully fetched', data: point };
         } catch (error) {
             return { success: false, statusCode: 500, message: 'Error fetching poitnd', data: error };

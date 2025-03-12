@@ -2,6 +2,8 @@ import { Schema, model } from "mongoose";
 
 import { IPoint, IPointRules, IReferral, ITransaction, IGift, ITransactionType } from "./interface";
 
+import ObjectId = Schema.Types.ObjectId
+
 const referralSchema = new Schema<IReferral>({
     pocketMoniId: { type: String, required: false },
     referrerId: { type: String, required: true },
@@ -11,7 +13,8 @@ const referralSchema = new Schema<IReferral>({
 });
 
 const pointSchema = new Schema<IPoint>({
-    userId: { type: String, required: true, unique: true },
+    userId: { type: ObjectId, ref: 'User', required: true },
+    // userId: { type: String, required: true, unique: true },
     totalPoints: { type: Number, default: 0 },
 });
 
