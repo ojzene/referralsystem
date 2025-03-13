@@ -19,6 +19,7 @@ const pointSchema = new Schema<IPoint>({
 });
 
 const pointRulesSchema = new Schema<IPointRules>({
+    transactionTypeId: { type: ObjectId, ref: 'TransactionType', required: true },
     type: { type: String, required: true, toLowerCase: true },
     minAmount: { type: Number, required: true },
     maxAmount: { type: Number },

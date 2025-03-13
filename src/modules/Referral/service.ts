@@ -215,6 +215,7 @@ export class ReferralService {
                 if(existingRule) return { success: false, statusCode: 400, message: 'Rule already exists' };
 
                 const pointrules = new PointRulesModel({
+                    transactionTypeId: transactionType?.id,
                     type: transactionType?.name,
                     minAmount,
                     maxAmount,
@@ -236,7 +237,7 @@ export class ReferralService {
         try {
             const transactionType = await TransactionTypeModel.findById(transactionTypeId);
             if (!transactionType) return { success: false, statusCode: 404, message: 'Transaction Type not found' };
-            const pointRules = await PointRulesModel.findByIdAndDelete({ type: transactionTypeId });
+            const pointRules = await PointRulesModel.findByIdAndDelete({ transactionTypeId: transactionTypeId });
             return { success: true, statusCode: 200, message: 'Point rules deleted successfully', data: pointRules };
         } catch (error) {
             return { success: false, statusCode: 500, message: 'Error deleting transaction type', data: error };

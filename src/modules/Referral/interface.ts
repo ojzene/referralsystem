@@ -12,6 +12,7 @@ export interface IPoint {
 }
 
 export interface IPointRules {
+    transactionTypeId: any;
     type: any;
     minAmount: number;
     maxAmount: number;
