@@ -243,11 +243,11 @@ export class ReferralService {
     }
 
     public deletePointRules = async(parsedParams: any) => {
-        const { transactionTypeId } = parsedParams;
+        const { pointRuleId } = parsedParams;
         try {
-            const transactionType = await TransactionTypeModel.findById(transactionTypeId);
-            if (!transactionType) return { success: false, statusCode: 404, message: 'Transaction Type not found' };
-            const pointRules = await PointRulesModel.findByIdAndDelete({ transactionTypeId: transactionTypeId });
+            // const transactionType = await TransactionTypeModel.findById(transactionTypeId);
+            // if (!transactionType) return { success: false, statusCode: 404, message: 'Transaction Type not found' };
+            const pointRules = await PointRulesModel.findByIdAndDelete(pointRuleId);
             return { success: true, statusCode: 200, message: 'Point rules deleted successfully', data: pointRules };
         } catch (error) {
             return { success: false, statusCode: 500, message: 'Error deleting transaction type', data: error };
