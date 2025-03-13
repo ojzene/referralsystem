@@ -68,6 +68,14 @@ export class ReferralController extends BaseController {
         }
     }
 
+    public getPointRules = async () => {
+        try {
+            return await this._referralService.getPointRules();
+        } catch (error) {
+            return this.sendResponse(error);
+        }
+    }
+
     public deletePointRules = async (parsedParams: any) => {
         try {
             return await this._referralService.deletePointRules(parsedParams);

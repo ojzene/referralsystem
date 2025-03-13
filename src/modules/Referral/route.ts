@@ -14,6 +14,7 @@ router.post("/transaction-type/seed", call(Referral.seedTransactionType, (req: R
 router.post("/gifts/seed", call(Referral.seedGifts, (req: Request, res: Response, next: NextFunction) => []));
 router.post("/point-rules/seed", call(Referral.seedPointRules, (req: Request, res: Response, next: NextFunction) => []));
 router.post("/point-rules", call(Referral.createPointRules, (req: Request, res: Response, next: NextFunction) => [req.body]));
+router.get("/point-rules", call(Referral.getPointRules, (req: Request, res: Response, next: NextFunction) => []));
 router.delete("/point-rules/:transactionTypeId", call(Referral.deletePointRules, (req: Request, res: Response, next: NextFunction) => [req.params]));
 router.post("/transaction-type", call(Referral.createUpdateTransactionType, (req: Request, res: Response, next: NextFunction) => [req.body]));
 router.get("/transaction-type", call(Referral.getTransactionType, (req: Request, res: Response, next: NextFunction) => []));

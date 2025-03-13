@@ -215,7 +215,7 @@ export class ReferralService {
                 if(existingRule) return { success: false, statusCode: 400, message: 'Rule already exists' };
 
                 const pointrules = new PointRulesModel({
-                    transactionTypeId: transactionType?.id,
+                    transactionTypeId: transactionType?._id,
                     type: transactionType?.name,
                     minAmount,
                     maxAmount,
@@ -230,6 +230,16 @@ export class ReferralService {
         } catch (error) {
             return { success: false, statusCode: 500, message: 'Error processing point rules', data: error };
         }
+    }
+
+    
+    public getPointRules = async () => {
+        try {
+            const rules = await PointRulesModel.find();
+            return { success: true, statusCode: 200, message: 'Point Rules successfully fetched', data: rules };
+        } catch (error) {
+            return { success: false, statusCode: 500, message: 'Error fetching point rules', data: error };
+        } 
     }
 
     public deletePointRules = async(parsedParams: any) => {
