@@ -318,7 +318,11 @@ export class ReferralService {
 
     public getLeaderboard = async () => {
         try {
-            const leaderboard = await PointModel.find().sort({ totalPoints: -1 }).limit(10);
+            const leaderboard = await PointModel.find().populate({
+                path: 'userId',
+                model: 'PocketUser',
+                select: 'firstName lastName email phoneNumber',
+            }).sort({ totalPoints: -1 }).limit(20);
             return { success: true, statusCode: 200, message: 'Leaderboard successfully fetched', data: leaderboard };
         } catch (error) {
             return { success: false, statusCode: 500, message: 'Error fetching leaderboard', data: error };
