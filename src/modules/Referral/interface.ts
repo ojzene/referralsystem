@@ -1,7 +1,8 @@
 export interface IReferral {
     pocketMoniId: any;
-    referrerId: string;
-    referredUserId: string;
+    referralCode: any;
+    referredUserCode: any;
+    customerTier: any;
     pointsEarned: number;
     createdAt: any;
 }
@@ -26,7 +27,8 @@ export interface ITransactionType {
 }
 
 export interface ITransaction {
-    referrerId: any;
+    referralCode: any;
+    referralId: any;
     userId: any;
     transactionType: any;
     amount: number;

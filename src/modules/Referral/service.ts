@@ -3,75 +3,96 @@ import { CustomerTierModel } from '../CustomerTier';
 import { GiftModel, PointModel, PointRulesModel, ReferralModel, TransactionModel, TransactionTypeModel } from './model';
 
 export class ReferralService {
+
     public recordReferral = async (parsedBody: any) => {
         console.log("recordReferral Service");
         const { referralCode, referredUserCode, customerTier } = parsedBody;
-
+    
         if (!referralCode || !referredUserCode || !customerTier) {
             return { success: false, statusCode: 400, message: 'Missing required fields' };
         }
-
-        // const tierPoints = { bronze: 10, silver: 20, gold: 30 };
-        // const points = tierPoints[customerTier] || 0;
-
+    
         const userTier = await CustomerTierModel.findById(customerTier);
         if (!userTier) {
             return { success: false, statusCode: 400, message: 'Invalid customer tier' };
         }
-        
-        const points = userTier?.point || 0;
-
+    
+        const points = userTier.point || 0;
         console.log("recordReferral points: ", points);
-        
+    
         try {
-            // check if referrerId exists in ReferralModel
-            const referrer = await PocketUserModel.findOne({ referralCode: referralCode });
+            const referrer = await PocketUserModel.findOne({ referralCode });
             if (!referrer) {
                 console.log("Could not find referrer for: " + referralCode);
                 return { success: false, statusCode: 400, message: 'Referrer not found' };
             }
-            // Check if the referred user is already referred by the referrer
-            const existingReferral = await ReferralModel.findOne({ referredUserCode });
+    
+            const existingReferral = await ReferralModel.findOne({ referredUserCode, referralCode });
             if (existingReferral) {
-                console.log("User already referred: " + referredUserCode);
-                return { success: false, statusCode: 400, message: 'User already referred' };
+                const existingUserTier = await CustomerTierModel.findById(existingReferral.customerTier);
+                if (existingUserTier && existingUserTier.id === customerTier) {
+                    console.log("User already referred with the same tier: " + referredUserCode);
+                    return { success: false, statusCode: 400, message: 'User already referred with the same tier, no update needed' };
+                }
+                
+                // Update referral points
+                existingReferral.customerTier = customerTier;
+                existingReferral.pointsEarned = points;
+                await existingReferral.save();
+    
+                let userPoints = await PointModel.findOneAndUpdate(
+                    { userId: referrer.id },
+                    { $inc: { totalPoints: points - (existingUserTier?.point || 0) } },
+                    { new: true, upsert: true }
+                );
+    
+                console.log("Referral updated: ", existingReferral);
+                return {
+                    success: true,
+                    statusCode: 200,
+                    message: 'Referral updated successfully',
+                    data: { referral: existingReferral, totalPoints: userPoints.totalPoints }
+                };
             }
-        
+    
             const referral = new ReferralModel({
-                referrerId: referralCode,
-                referredUserId: referredUserCode,
+                referralCode,
+                referredUserCode,
+                customerTier: customerTier,
                 pointsEarned: points,
             });
             await referral.save();
-
-            console.log("referral saved: " + referral);
-        
-            let userPoints = await PointModel.findOne({ userId: referrer?.id });
-            if (!userPoints) {
-              userPoints = new PointModel({ userId: referrer?.id, totalPoints: 0 });
-            }
-            userPoints.totalPoints += points;
-            await userPoints.save();
-
-            referrer.referralCount = referrer.referralCount + 1;
-            await referrer.save(); 
-
-            console.log("referrer saved: " + referrer);
-        
-            return { success: true, statusCode: 201, message: 'Referral recorded successfully', data: { referral, totalPoints: userPoints.totalPoints } };
+            console.log("Referral saved: ", referral);
+    
+            let userPoints = await PointModel.findOneAndUpdate(
+                { userId: referrer.id },
+                { $inc: { totalPoints: points } },
+                { new: true, upsert: true }
+            );
+    
+            referrer.referralCount += 1;
+            await referrer.save();
+            console.log("Referrer updated: ", referrer);
+    
+            return {
+                success: true,
+                statusCode: 201,
+                message: 'Referral recorded successfully',
+                data: { referral, totalPoints: userPoints.totalPoints }
+            };
         } catch (error) {
-            console.log("recordReferral processing error: ", error);
-            return { success: false, statusCode: 500, message: 'Error processing referral' };
+            console.error("recordReferral processing error: ", error);
+            return { success: false, statusCode: 500, message: 'Error processing referral: '+ error };
         }
     }
 
     public recordTransaction = async (parsedBody: any) => {
-        const { userId, transactionType, amount, beneficiaryId, extraField } = parsedBody;
+        const { userId, transactionTypeId, amount, beneficiaryId, extraField } = parsedBody;
 
         const parsedAmount = parseFloat(amount);
         console.log('parsedAmount: ', parsedAmount);
 
-        if (!userId || !transactionType || !amount || !beneficiaryId) {
+        if (!userId || !transactionTypeId || !amount || !beneficiaryId) {
             return { success: false, statusCode: 400, message: 'Missing required fields' };
         }
 
@@ -81,46 +102,54 @@ export class ReferralService {
         }
 
         // find if transaction type is in transactionModel
-        const transactionTypeModel = await TransactionTypeModel.findOne({ name: transactionType });
-        if (!transactionTypeModel) {
+        const transactionTypeData = await TransactionTypeModel.findById(transactionTypeId);
+        if (!transactionTypeData) {
             return { success: false, statusCode: 400, message: 'Invalid transaction type' };
         }
 
-        const pointsEarned = await this.calculatePoints(transactionType, parseFloat(amount?.toFixed(2)));
+        const pointsEarned = await this.calculatePoints(transactionTypeData?.name, parseFloat(amount?.toFixed(2)));
 
         console.log('pointsEarned: ', pointsEarned);
 
         try {
-            const existingTransaction = await TransactionModel.findOne({
-                userId,
-                transactionType,
-                beneficiaryId,
-                extraField,
-                createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
-            });
+            // get referredBy for user model and also retrieve the referredBy user id from PocketUserModel
+            const referredBy = await PocketUserModel.findOne({ referralCode: userModel?.referredBy });
+            if(referredBy) {
+                const referralUserId = referredBy?.id;
 
-            if (existingTransaction) {
-                return { success: false, statusCode: 400, message: 'Transaction already counted within 24 hours' };
+                const existingTransaction = await TransactionModel.findOne({
+                    userId,
+                    transactionType: transactionTypeId,
+                    createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+                });
+
+                if (existingTransaction) {
+                    return { success: false, statusCode: 400, message: 'Transaction already counted within 24 hours' };
+                }
+
+                const transaction = new TransactionModel({
+                    referralCode: userModel?.referralCode,
+                    referralId: referralUserId,
+                    userId,
+                    transactionType: transactionTypeId,
+                    amount,
+                    pointsEarned,
+                    beneficiaryId,
+                    extraField,
+                });
+                await transaction.save();
+
+                let userPoints = await PointModel.findOne({ userId: referralUserId });
+                if (!userPoints) {
+                    userPoints = new PointModel({ userId: referralUserId, totalPoints: 0 });
+                }
+                userPoints.totalPoints += pointsEarned;
+                await userPoints.save();
+
+                return { success: true, statusCode: 201, message: 'Transaction recorded successfully', data: { transaction, referral: userPoints } };
+            } else {
+                return { success: false, statusCode: 400, message: 'Referral code not found, points cannot be awarded' };
             }
-
-            const transaction = new TransactionModel({
-                referrerId: userModel?.referralCode,
-                userId,
-                transactionType,
-                amount,
-                pointsEarned,
-                beneficiaryId,
-            });
-            await transaction.save();
-
-            let userPoints = await PointModel.findOne({ userId });
-            if (!userPoints) {
-                userPoints = new PointModel({ userId, totalPoints: 0 });
-            }
-            userPoints.totalPoints += pointsEarned;
-            await userPoints.save();
-
-            return { success: true, statusCode: 201, message: 'Transaction recorded successfully', data: { transaction, totalPoints: userPoints.totalPoints } };
         } catch (error) {
             return { success: false, statusCode: 500, message: 'Error processing transaction', data: error };
         }
@@ -216,10 +245,13 @@ export class ReferralService {
     public createPointRules = async(parsedBody: any) => {
         const { transactionTypeId, minAmount, maxAmount, points } = parsedBody;
         try {
+            const checkPointRule = await PointRulesModel.findOne({ transactionTypeId });
+            if(checkPointRule) return { success: false, statusCode: 400, message: 'Rule already exists' };
+
             const transactionType = await TransactionTypeModel.findById(transactionTypeId);
             if(transactionType) {
-                if(points == 0) return { success: false, statusCode: 404, message: 'Point cannot be equal to zero' };
-                if(minAmount >= maxAmount) return { success: false, statusCode: 404, message: 'Minimum amount cannot be more than maximum amount' };
+                if(points == 0) return { success: false, statusCode: 404, message: 'Point cannot be zero' };
+                if(minAmount > maxAmount) return { success: false, statusCode: 404, message: 'Minimum amount cannot be more than maximum amount' };
 
                 const existingRule = await PointRulesModel.findOne({ type: transactionType?.name, minAmount, maxAmount });
                 if(existingRule) return { success: false, statusCode: 400, message: 'Rule already exists' };
@@ -241,7 +273,6 @@ export class ReferralService {
             return { success: false, statusCode: 500, message: 'Error processing point rules', data: error };
         }
     }
-
     
     public getPointRules = async () => {
         try {
@@ -382,7 +413,6 @@ export class ReferralService {
         } 
     }
     
-
     // Function to Calculate Points Dynamically
     private calculatePoints = async (transactionType: any, amount: any) => {
         const rules = await PointRulesModel.find({ type: transactionType });

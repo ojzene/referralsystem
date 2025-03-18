@@ -6,8 +6,9 @@ import ObjectId = Schema.Types.ObjectId
 
 const referralSchema = new Schema<IReferral>({
     pocketMoniId: { type: String, required: false },
-    referrerId: { type: String, required: true },
-    referredUserId: { type: String, required: true, unique: true },
+    referralCode: { type: String, required: true },
+    referredUserCode: { type: String, required: true },
+    customerTier: { type: ObjectId, ref: 'CustomerTier', required: false },
     pointsEarned: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now },
 });
@@ -32,9 +33,10 @@ const transactionTypeSchema = new Schema<ITransactionType>({
 });
 
 const transactionSchema = new Schema<ITransaction>({
-    referrerId: { type: String, required: false },
+    referralCode: { type: String, required: false },
+    referralId: { type: ObjectId, ref: 'PocketUser', required: false },
     userId: { type: ObjectId, ref: 'PocketUser', required: true },
-    transactionType: { type: String, required: true },
+    transactionType: { type: ObjectId, ref: 'TransactionType', required: true },
     amount: { type: Number, required: true },
     pointsEarned: { type: Number, required: true },
     beneficiaryId: { type: String, required: false },
