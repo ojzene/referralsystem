@@ -13,7 +13,7 @@ export interface IPocketUser {
     referralCode: string;
     referralCount: number;
     referredBy: string;
-    customerTier: string;
+    customerTier: any;
     createdAt: any;
     updatedAt: any;
 }

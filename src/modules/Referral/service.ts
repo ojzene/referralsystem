@@ -1,52 +1,62 @@
 import { PocketUserModel } from '../User';
+import { CustomerTierModel } from '../CustomerTier';
 import { GiftModel, PointModel, PointRulesModel, ReferralModel, TransactionModel, TransactionTypeModel } from './model';
 
 export class ReferralService {
-
     public recordReferral = async (parsedBody: any) => {
         console.log("recordReferral Service");
-        const { referrerId, referredUserId, customerTier } = parsedBody;
+        const { referralCode, referredUserCode, customerTier } = parsedBody;
 
-        if (!referrerId || !referredUserId || !customerTier) {
+        if (!referralCode || !referredUserCode || !customerTier) {
             return { success: false, statusCode: 400, message: 'Missing required fields' };
         }
 
+        // const tierPoints = { bronze: 10, silver: 20, gold: 30 };
+        // const points = tierPoints[customerTier] || 0;
+
+        const userTier = await CustomerTierModel.findById(customerTier);
+        if (!userTier) {
+            return { success: false, statusCode: 400, message: 'Invalid customer tier' };
+        }
         
-        
-        const tierPoints = { bronze: 10, silver: 20, gold: 30 };
-        const points = tierPoints[customerTier] || 0;
+        const points = userTier?.point || 0;
 
         console.log("recordReferral points: ", points);
         
         try {
             // check if referrerId exists in ReferralModel
-            const referrer = await PocketUserModel.findOne({ referralCode: referrerId });
+            const referrer = await PocketUserModel.findOne({ referralCode: referralCode });
             if (!referrer) {
-                console.log("Could not find referrer for: " + referredUserId);
+                console.log("Could not find referrer for: " + referralCode);
                 return { success: false, statusCode: 400, message: 'Referrer not found' };
             }
             // Check if the referred user is already referred by the referrer
-            const existingReferral = await ReferralModel.findOne({ referredUserId });
+            const existingReferral = await ReferralModel.findOne({ referredUserCode });
             if (existingReferral) {
-                console.log("User already referred: " + referredUserId);
+                console.log("User already referred: " + referredUserCode);
                 return { success: false, statusCode: 400, message: 'User already referred' };
             }
         
             const referral = new ReferralModel({
-                referrerId,
-                referredUserId,
+                referrerId: referralCode,
+                referredUserId: referredUserCode,
                 pointsEarned: points,
             });
             await referral.save();
 
             console.log("referral saved: " + referral);
         
-            let userPoints = await PointModel.findOne({ userId: referrerId });
+            let userPoints = await PointModel.findOne({ userId: referrer?.id });
             if (!userPoints) {
-              userPoints = new PointModel({ userId: referrerId, totalPoints: 0 });
+              userPoints = new PointModel({ userId: referrer?.id, totalPoints: 0 });
             }
             userPoints.totalPoints += points;
             await userPoints.save();
+
+            referrer.referralCount = referrer.referralCount + 1;
+            await referrer.save(); 
+
+            console.log("referrer saved: " + referrer);
         
             return { success: true, statusCode: 201, message: 'Referral recorded successfully', data: { referral, totalPoints: userPoints.totalPoints } };
         } catch (error) {

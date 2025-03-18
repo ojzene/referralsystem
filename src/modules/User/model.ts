@@ -1,6 +1,8 @@
 import { Schema, model } from "mongoose";
 import { IPocketUser } from "./interface";
 
+import ObjectId = Schema.Types.ObjectId
+
 const pocketUserSchema = new Schema<IPocketUser>({
     pocketMoniId: { type: String, required: true },
     email: { type: String, required: true },
@@ -15,7 +17,7 @@ const pocketUserSchema = new Schema<IPocketUser>({
     referralCode: { type: String, required: false },
     referralCount: { type: Number, required: false },
     referredBy: { type: String, required: false },
-    customerTier: { type: String, required: false },
+    customerTier: { type: ObjectId, ref: 'CustomerTier', required: false },
     extraField: [{ type: String, required: false }],
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, required: false },
@@ -23,4 +25,4 @@ const pocketUserSchema = new Schema<IPocketUser>({
 
 const PocketUserModel = model<IPocketUser>('PocketUser', pocketUserSchema);
 
-export { PocketUserModel }
+export { PocketUserModel}

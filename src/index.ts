@@ -14,6 +14,8 @@ import { MONGO_URI, COOKIE_KEY } from './utils/secrets';
 import userRoutes from './modules/User/route';
 import authRoutes from './modules/AuthenticateUser/route';
 import referralRoutes from './modules/Referral/route';
+import customerTierRoutes from './modules/CustomerTier/route';
+
 import { PointModel } from './modules/Referral';
 
 dotenv.config();
@@ -49,6 +51,7 @@ app.use(passport.session());
 app.use('/api/users', userRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/referral', referralRoutes);
+app.use('/api/customer-tier', customerTierRoutes);
 
 // Monthly Points Reset
 cron.schedule('0 0 1 * *', async () => {

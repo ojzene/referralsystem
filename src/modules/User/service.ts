@@ -52,14 +52,15 @@ export class UserService {
             const newUser = new PocketUserModel(parsedUser);
             await newUser.save();
 
-            if(referredBy != null) {
+            if(referredBy != null || referredBy != "") {
                 // implement recordReferral method from Referral service 
-                const parsedReferral = { referrerId: referredBy, referredUserId: referralCode, customerTier }
+                const parsedReferral = { referralCode: referredBy, referredUserCode: referralCode, customerTier }
                 console.log(JSON.stringify(parsedReferral));
                 await this._newReferrer.recordReferral(parsedReferral);
+                return { success: true, statusCode: 201, message: "Pocket User registered successfully", data: newUser };
+            } else {
+                return { success: true, statusCode: 201, message: "Pocket User created successfully", data: newUser };
             }
-
-            return { success: true, statusCode: 201, message: "Pocket User created successfully", data: newUser };
         }
     }
 
@@ -78,7 +79,6 @@ export class UserService {
 
     public updateUser = async (userId:any, parsedBody: any) => {
         // const requestBodyNotAllowed = ['password', 'accountType', 'registerType', 'email', 'userCode', 'userName', 'subUser', 'isActive', 'isVerified' ]
-        
         // const email = parsedBody.email.trim();
         let email = parsedBody.email;
         let phoneNumber = parsedBody.phoneNumber;
@@ -150,4 +150,5 @@ export class UserService {
           return { success: false, statusCode: 500, message: 'Error fetching user points', data: error };
         }
     }
+
 }
