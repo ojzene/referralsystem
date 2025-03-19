@@ -92,7 +92,7 @@ export class ReferralService {
         const parsedAmount = parseFloat(amount);
         console.log('parsedAmount: ', parsedAmount);
 
-        if (!userId || !transactionTypeId || !amount || !beneficiaryId) {
+        if (!userId || !transactionTypeId || !amount) {
             return { success: false, statusCode: 400, message: 'Missing required fields' };
         }
 
