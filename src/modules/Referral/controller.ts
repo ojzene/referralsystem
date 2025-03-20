@@ -44,6 +44,14 @@ export class ReferralController extends BaseController {
         }
     }
 
+    public seedCustomerTier = async () => {
+        try {
+            return await this._referralService.seedCustomerTier();
+        } catch (error) {
+            return this.sendResponse(error);
+        }
+    }
+
     public createUpdateTransactionType = async (parsedBody: any) => {
         try {
             return await this._referralService.createUpdateTransactionType(parsedBody);

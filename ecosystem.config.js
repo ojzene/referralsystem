@@ -38,7 +38,8 @@ module.exports = {
             "TWILIO_VERIFYSID": "VA8ef58c41db42e65ad899e78f42309587",
             "MONGO_LOCAL": "mongodb://127.0.0.1:27017/pocketpointsdb",
             "MONGO_PROD": "mongodb+srv://pocketpoint:pocketpoint2025@cluster0.a4j9b.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0/pocketpointsdb",
-            "COOKIE_KEY": "any_long_and_random_string"
+            "COOKIE_KEY": "any_long_and_random_string",
+            "MINIMUM_ONBOARDING_POINT": 100
           },
           env_test: {
             "PORT": 8080,
@@ -74,9 +75,9 @@ module.exports = {
             "TWILIO_VERIFYSID": "VA8ef58c41db42e65ad899e78f42309587",
             "MONGO_LOCAL": "mongodb://127.0.0.1:27017/pocketpointsdb",
             "MONGO_PROD": "mongodb+srv://pocketpoint:pocketpoint2025@cluster0.a4j9b.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0/pocketpointsdb",
-            "COOKIE_KEY": "any_long_and_random_string"
-          }
-          ,
+            "COOKIE_KEY": "any_long_and_random_string",
+            "MINIMUM_ONBOARDING_POINT": 100
+          },
           env_production: {
             "PORT": 3003,
             "NODE_ENV": "production",
@@ -111,7 +112,8 @@ module.exports = {
             "TWILIO_VERIFYSID": "VA8ef58c41db42e65ad899e78f42309587",
             "MONGO_LOCAL": "mongodb://127.0.0.1:27017/pocketpointsdb",
             "MONGO_PROD": "mongodb+srv://pocketpoint:pocketpoint2025@cluster0.a4j9b.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0/pocketpointsdb",
-            "COOKIE_KEY": "any_long_and_random_string"
+            "COOKIE_KEY": "any_long_and_random_string",
+            "MINIMUM_ONBOARDING_POINT": 100
           },
           watch: 'false',
           ignore_watch : [ "*.log"],

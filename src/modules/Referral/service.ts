@@ -2,7 +2,91 @@ import { PocketUserModel } from '../User';
 import { CustomerTierModel } from '../CustomerTier';
 import { GiftModel, PointModel, PointRulesModel, ReferralModel, TransactionModel, TransactionTypeModel } from './model';
 
+import { Types } from 'mongoose';
+
 export class ReferralService {
+
+    // public recordReferral = async (parsedBody: any) => {
+    //     console.log("recordReferral Service");
+    //     const { referralCode, referredUserCode, customerTier } = parsedBody;
+    
+    //     if (!referralCode || !referredUserCode || !customerTier) {
+    //         return { success: false, statusCode: 400, message: 'Missing required fields' };
+    //     }
+    
+    //     const userTier = await CustomerTierModel.findById(customerTier);
+    //     if (!userTier) {
+    //         return { success: false, statusCode: 400, message: 'Invalid customer tier' };
+    //     }
+    
+    //     const points = userTier.point || 0;
+    //     console.log("recordReferral points: ", points);
+    
+    //     try {
+    //         const referrer = await PocketUserModel.findOne({ referralCode });
+    //         if (!referrer) {
+    //             console.log("Could not find referrer for: " + referralCode);
+    //             return { success: false, statusCode: 400, message: 'Referrer not found' };
+    //         }
+    
+    //         const existingReferral = await ReferralModel.findOne({ referredUserCode, referralCode });
+    //         if (existingReferral) {
+    //             const existingUserTier = await CustomerTierModel.findById(existingReferral.customerTier);
+    //             if (existingUserTier && existingUserTier.id === customerTier) {
+    //                 console.log("User already referred with the same tier: " + referredUserCode);
+    //                 return { success: false, statusCode: 400, message: 'User already referred with the same tier, no update needed' };
+    //             }
+                
+    //             // Update referral points
+    //             existingReferral.customerTier = customerTier;
+    //             existingReferral.pointsEarned = points;
+    //             await existingReferral.save();
+    
+    //             let userPoints = await PointModel.findOneAndUpdate(
+    //                 { userId: referrer.id },
+    //                 { $inc: { totalPoints: points - (existingUserTier?.point || 0) } },
+    //                 { new: true, upsert: true }
+    //             );
+    
+    //             console.log("Referral updated: ", existingReferral);
+    //             return {
+    //                 success: true,
+    //                 statusCode: 200,
+    //                 message: 'Referral updated successfully',
+    //                 data: { referral: existingReferral, totalPoints: userPoints.totalPoints }
+    //             };
+    //         }
+    
+    //         const referral = new ReferralModel({
+    //             referralCode,
+    //             referredUserCode,
+    //             customerTier: customerTier,
+    //             pointsEarned: points,
+    //         });
+    //         await referral.save();
+    //         console.log("Referral saved: ", referral);
+    
+    //         let userPoints = await PointModel.findOneAndUpdate(
+    //             { userId: referrer.id },
+    //             { $inc: { totalPoints: points } },
+    //             { new: true, upsert: true }
+    //         );
+    
+    //         referrer.referralCount += 1;
+    //         await referrer.save();
+    //         console.log("Referrer updated: ", referrer);
+    
+    //         return {
+    //             success: true,
+    //             statusCode: 201,
+    //             message: 'Referral recorded successfully',
+    //             data: { referral, totalPoints: userPoints.totalPoints }
+    //         };
+    //     } catch (error) {
+    //         console.error("recordReferral processing error: ", error);
+    //         return { success: false, statusCode: 500, message: 'Error processing referral: '+ error };
+    //     }
+    // }
 
     public recordReferral = async (parsedBody: any) => {
         console.log("recordReferral Service");
@@ -74,6 +158,38 @@ export class ReferralService {
             await referrer.save();
             console.log("Referrer updated: ", referrer);
     
+            // Check if referrer has at least 100 points from onboarding
+            // const totalReferralPoints = await ReferralModel.aggregate([
+            //     { $match: { referralCode } },
+            //     { $group: { _id: null, totalPoints: { $sum: "$pointsEarned" } } }
+            // ]);
+            // const onboardingPoints = totalReferralPoints[0]?.totalPoints || 0;
+            // if (onboardingPoints < 100) {
+            //     console.log("Referrer does not qualify for gift redemption. Onboarding points: ", onboardingPoints);
+            //     return {
+            //         success: true,
+            //         statusCode: 201,
+            //         message: 'Referral recorded successfully, but referrer does not qualify for gift redemption',
+            //         data: { referral, totalPoints: userPoints.totalPoints }
+            //     };
+            // }
+
+            // Check if referrer has at least 100 points from onboarding
+            const totalReferralPoints = await ReferralModel.aggregate([
+                { $match: { referralCode, referredUserCode: { $ne: null } } },
+                { $group: { _id: null, totalPoints: { $sum: "$pointsEarned" } } }
+            ]);
+            const onboardingPoints = totalReferralPoints[0]?.totalPoints || 0;
+            if (onboardingPoints < 100) {
+                console.log("Referrer does not qualify for gift redemption. Onboarding points: ", onboardingPoints);
+                return {
+                    success: true,
+                    statusCode: 201,
+                    message: 'Referral recorded successfully, but referrer does not qualify for gift redemption',
+                    data: { referral, totalPoints: userPoints.totalPoints }
+                };
+            }
+    
             return {
                 success: true,
                 statusCode: 201,
@@ -85,7 +201,7 @@ export class ReferralService {
             return { success: false, statusCode: 500, message: 'Error processing referral: '+ error };
         }
     }
-
+    
     public recordTransaction = async (parsedBody: any) => {
         const { userId, transactionTypeId, amount, beneficiaryId, extraField } = parsedBody;
 
@@ -155,22 +271,81 @@ export class ReferralService {
         }
     }
 
+    public seedTransactionType = async () => {
+        const existingType = await TransactionTypeModel.countDocuments();
+        if (existingType === 0) {
+            const rules = [
+                { name: 'transaction', description: '' },
+                { name: 'bills', description: '' },
+                { name: 'credit', description: '' }
+            ];
+            const seededTypes = await TransactionTypeModel.insertMany(rules);
+            console.log('Transaction types seeded successfully');
+            return { success: true, statusCode: 200, message: 'Transaction types seeded successfully', data: seededTypes };
+        }
+    };
+
     // Seed Default Point Rules
     public seedPointRules = async () => {
         const existingRules = await PointRulesModel.countDocuments();
         if (existingRules === 0) {
-            const rules = [
-                { type: 'transaction', minAmount: 1000, points: 20 },
-                { type: 'bills', minAmount: 1000, points: 20 },
-                { type: 'credit', minAmount: 1000, maxAmount: 50999.99, points: 20 },
-                { type: 'credit', minAmount: 51000, maxAmount: 200999.99, points: 30 },
-                { type: 'credit', minAmount: 201000, points: 40 }
+            const rules: { transactionTypeId: Types.ObjectId | null; type: string; minAmount: number; maxAmount?: number; points: number }[] = [
+                { transactionTypeId: null, type: 'transaction', minAmount: 1000, points: 20 },
+                { transactionTypeId: null, type: 'bills', minAmount: 1000, points: 20 },
+                { transactionTypeId: null, type: 'credit', minAmount: 1000, maxAmount: 50999.99, points: 20 },
+                { transactionTypeId: null, type: 'credit', minAmount: 51000, maxAmount: 200999.99, points: 30 },
+                { transactionTypeId: null, type: 'credit', minAmount: 201000, points: 40 }
             ];
+    
+            // Retrieve transaction types with both _id and name
+            const transactionTypes = await TransactionTypeModel.find().select('_id name');
+    
+            rules.forEach((rule) => {
+                const matchedType = transactionTypes.find((type) => type.name === rule.type);
+                if (matchedType) {
+                    rule.transactionTypeId = new Types.ObjectId(matchedType._id); // Ensure type compatibility
+                }
+            });
+    
+            console.log("Updated rules with transactionTypeId:", rules);
+    
             const seededRules = await PointRulesModel.insertMany(rules);
             console.log('Point rules seeded successfully');
             return { success: true, statusCode: 200, message: 'Point rules seeded successfully', data: seededRules };
         }
     };
+    
+
+    
+    // public seedPointRules = async () => {
+    //     const existingRules = await PointRulesModel.countDocuments();
+    //     if (existingRules === 0) {
+    //         const rules = [
+    //             { transactionTypeId: null, type: 'transaction', minAmount: 1000, points: 20 },
+    //             { transactionTypeId: null, type: 'bills', minAmount: 1000, points: 20 },
+    //             { transactionTypeId: null, type: 'credit', minAmount: 1000, maxAmount: 50999.99, points: 20 },
+    //             { transactionTypeId: null, type: 'credit', minAmount: 51000, maxAmount: 200999.99, points: 30 },
+    //             { transactionTypeId: null, type: 'credit', minAmount: 201000, points: 40 }
+    //         ];
+
+    //         // find transactionTypeIds from TransactionTypeModel and insert them into PointRulesModel where name in TransactionTypeModel is equal to type in rules array
+    //         const transactionTypeIds = await TransactionTypeModel.find().select('_id');
+    //         rules.forEach((rule) => {
+    //             transactionTypeIds.forEach((typeId) => {
+    //                 if (typeId.name === rule.type) {
+    //                     rule.transactionTypeId = typeId.id;
+    //                 }
+    //             });
+    //         });
+
+    //         console.log("rules:", rules);
+
+
+    //         const seededRules = await PointRulesModel.insertMany(rules);
+    //         console.log('Point rules seeded successfully');
+    //         return { success: true, statusCode: 200, message: 'Point rules seeded successfully', data: seededRules };
+    //     }
+    // };
 
     public seedGifts = async () => {
         const gifts = [
@@ -187,19 +362,20 @@ export class ReferralService {
         return { success: true, statusCode: 200, message: 'Gifts seeded successfully', data: seededGifts };
     };
 
-    public seedTransactionType = async () => {
-        const existingType = await TransactionTypeModel.countDocuments();
-        if (existingType === 0) {
+    public seedCustomerTier = async () => {
+        const existingTier = await CustomerTierModel.countDocuments();
+        if (existingTier === 0) {
             const rules = [
-                { name: 'transaction', description: '' },
-                { name: 'bills', description: '' },
-                { name: 'credit', description: '' }
+                { name: 'bronze', point: 10 },
+                { name: 'silver', point: 20 },
+                { name: 'gold', point: 30 }
             ];
-            const seededTypes = await TransactionTypeModel.insertMany(rules);
-            console.log('Transaction types seeded successfully');
-            return { success: true, statusCode: 200, message: 'Transaction types seeded successfully', data: seededTypes };
+            const seededTiers = await CustomerTierModel.insertMany(rules);
+            console.log('Customer Tier seeded successfully');
+            return { success: true, statusCode: 200, message: 'Customer Tier seeded successfully', data: seededTiers };
         }
     };
+    
 
     public createUpdateTransactionType = async(parsedBody: any) => {
         const { id, name, description } = parsedBody;
@@ -331,27 +507,53 @@ export class ReferralService {
     public redeemGift = async (parsedBody: any) => {
         const { userId, giftId } = parsedBody;
         try {
-            const userPoints = await PointModel.findOne({ userId });
-            if (!userPoints) return { success: false, statusCode: 404, message: 'User not found' };
-        
-            const gift = await GiftModel.findById(giftId);
-            if (!gift) return { success: false, statusCode: 404, message: 'Gift not found' };
-        
-            if (userPoints.totalPoints < gift.pointsRequired) {
-                return { success: false, statusCode: 400, message: 'Not enough points to redeem this gift' };
-            }
+            const user = await PocketUserModel.findById(userId);
+            if (!user) return { success: false, statusCode: 404, message: 'User not found' };
+            
+            if(user) {
+                // Check if referrer has at least 100 points from onboarding
+                const referralCode = user.referralCode;
+                console.log("referralCode---", referralCode);
+                const referral = await ReferralModel.findOne({ referralCode });
+                if (!referral) return { success: false, statusCode: 404, message: 'User Referral Info not found' };
 
-            if (gift.quantity <= 0) {
-                return { success: false, statusCode: 400, message: 'Gift is out of stock' };
-            }
+                const totalReferralPoints = await ReferralModel.aggregate([
+                    { $match: { referralCode, referredUserCode: { $ne: null } } },
+                    { $group: { _id: null, totalPoints: { $sum: "$pointsEarned" } } }
+                ]);
+                const onboardingPoints = totalReferralPoints[0]?.totalPoints || 0;
+                if (onboardingPoints < 100) {
+                    console.log("Referrer does not qualify for gift redemption. Onboarding points: ", onboardingPoints);
+                    return {
+                        success: true,
+                        statusCode: 201,
+                        message: 'User does not qualify for gift redemption, not enough onboarding points',
+                        data: { referral, onboardingPoints: onboardingPoints }
+                    };
+                }
         
-            userPoints.totalPoints -= gift.pointsRequired;
-            gift.quantity -= 1;
-            gift.claimedBy.push(userId);
-            await userPoints.save();
-            await gift.save();
+                const userPoints = await PointModel.findOne({ userId });
+                if (!userPoints) return { success: false, statusCode: 404, message: 'User not found' };
+            
+                const gift = await GiftModel.findById(giftId);
+                if (!gift) return { success: false, statusCode: 404, message: 'Gift not found' };
+            
+                if (userPoints.totalPoints < gift.pointsRequired) {
+                    return { success: false, statusCode: 400, message: 'Not enough points to redeem this gift' };
+                }
 
-            return { success: true, statusCode: 200,  message: 'Gift redeemed successfully', data: { gift, remainingPoints: userPoints.totalPoints } };
+                if (gift.quantity <= 0) {
+                    return { success: false, statusCode: 400, message: 'Gift is out of stock' };
+                }
+            
+                userPoints.totalPoints -= gift.pointsRequired;
+                gift.quantity -= 1;
+                gift.claimedBy.push(userId);
+                await userPoints.save();
+                await gift.save();
+
+                return { success: true, statusCode: 200,  message: 'Gift redeemed successfully', data: { gift, remainingPoints: userPoints.totalPoints } };
+            }
         } catch (error) {
             return { success: false, statusCode: 500, message: 'Error processing gift redemption', data: error };
         }
