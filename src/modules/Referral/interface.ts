@@ -3,6 +3,7 @@ export interface IReferral {
     referralCode: any;
     referredUserCode: any;
     customerTier: any;
+    onboardingPoint: number;
     pointsEarned: number;
     createdAt: any;
 }

@@ -6,88 +6,6 @@ import { Types } from 'mongoose';
 
 export class ReferralService {
 
-    // public recordReferral = async (parsedBody: any) => {
-    //     console.log("recordReferral Service");
-    //     const { referralCode, referredUserCode, customerTier } = parsedBody;
-    
-    //     if (!referralCode || !referredUserCode || !customerTier) {
-    //         return { success: false, statusCode: 400, message: 'Missing required fields' };
-    //     }
-    
-    //     const userTier = await CustomerTierModel.findById(customerTier);
-    //     if (!userTier) {
-    //         return { success: false, statusCode: 400, message: 'Invalid customer tier' };
-    //     }
-    
-    //     const points = userTier.point || 0;
-    //     console.log("recordReferral points: ", points);
-    
-    //     try {
-    //         const referrer = await PocketUserModel.findOne({ referralCode });
-    //         if (!referrer) {
-    //             console.log("Could not find referrer for: " + referralCode);
-    //             return { success: false, statusCode: 400, message: 'Referrer not found' };
-    //         }
-    
-    //         const existingReferral = await ReferralModel.findOne({ referredUserCode, referralCode });
-    //         if (existingReferral) {
-    //             const existingUserTier = await CustomerTierModel.findById(existingReferral.customerTier);
-    //             if (existingUserTier && existingUserTier.id === customerTier) {
-    //                 console.log("User already referred with the same tier: " + referredUserCode);
-    //                 return { success: false, statusCode: 400, message: 'User already referred with the same tier, no update needed' };
-    //             }
-                
-    //             // Update referral points
-    //             existingReferral.customerTier = customerTier;
-    //             existingReferral.pointsEarned = points;
-    //             await existingReferral.save();
-    
-    //             let userPoints = await PointModel.findOneAndUpdate(
-    //                 { userId: referrer.id },
-    //                 { $inc: { totalPoints: points - (existingUserTier?.point || 0) } },
-    //                 { new: true, upsert: true }
-    //             );
-    
-    //             console.log("Referral updated: ", existingReferral);
-    //             return {
-    //                 success: true,
-    //                 statusCode: 200,
-    //                 message: 'Referral updated successfully',
-    //                 data: { referral: existingReferral, totalPoints: userPoints.totalPoints }
-    //             };
-    //         }
-    
-    //         const referral = new ReferralModel({
-    //             referralCode,
-    //             referredUserCode,
-    //             customerTier: customerTier,
-    //             pointsEarned: points,
-    //         });
-    //         await referral.save();
-    //         console.log("Referral saved: ", referral);
-    
-    //         let userPoints = await PointModel.findOneAndUpdate(
-    //             { userId: referrer.id },
-    //             { $inc: { totalPoints: points } },
-    //             { new: true, upsert: true }
-    //         );
-    
-    //         referrer.referralCount += 1;
-    //         await referrer.save();
-    //         console.log("Referrer updated: ", referrer);
-    
-    //         return {
-    //             success: true,
-    //             statusCode: 201,
-    //             message: 'Referral recorded successfully',
-    //             data: { referral, totalPoints: userPoints.totalPoints }
-    //         };
-    //     } catch (error) {
-    //         console.error("recordReferral processing error: ", error);
-    //         return { success: false, statusCode: 500, message: 'Error processing referral: '+ error };
-    //     }
-    // }
-
     public recordReferral = async (parsedBody: any) => {
         console.log("recordReferral Service");
         const { referralCode, referredUserCode, customerTier } = parsedBody;
@@ -143,6 +61,7 @@ export class ReferralService {
                 referralCode,
                 referredUserCode,
                 customerTier: customerTier,
+                onboardingPoint: points,
                 pointsEarned: points,
             });
             await referral.save();
@@ -315,38 +234,6 @@ export class ReferralService {
         }
     };
     
-
-    
-    // public seedPointRules = async () => {
-    //     const existingRules = await PointRulesModel.countDocuments();
-    //     if (existingRules === 0) {
-    //         const rules = [
-    //             { transactionTypeId: null, type: 'transaction', minAmount: 1000, points: 20 },
-    //             { transactionTypeId: null, type: 'bills', minAmount: 1000, points: 20 },
-    //             { transactionTypeId: null, type: 'credit', minAmount: 1000, maxAmount: 50999.99, points: 20 },
-    //             { transactionTypeId: null, type: 'credit', minAmount: 51000, maxAmount: 200999.99, points: 30 },
-    //             { transactionTypeId: null, type: 'credit', minAmount: 201000, points: 40 }
-    //         ];
-
-    //         // find transactionTypeIds from TransactionTypeModel and insert them into PointRulesModel where name in TransactionTypeModel is equal to type in rules array
-    //         const transactionTypeIds = await TransactionTypeModel.find().select('_id');
-    //         rules.forEach((rule) => {
-    //             transactionTypeIds.forEach((typeId) => {
-    //                 if (typeId.name === rule.type) {
-    //                     rule.transactionTypeId = typeId.id;
-    //                 }
-    //             });
-    //         });
-
-    //         console.log("rules:", rules);
-
-
-    //         const seededRules = await PointRulesModel.insertMany(rules);
-    //         console.log('Point rules seeded successfully');
-    //         return { success: true, statusCode: 200, message: 'Point rules seeded successfully', data: seededRules };
-    //     }
-    // };
-
     public seedGifts = async () => {
         const gifts = [
           { name: "Ziba Resort", quantity: 1, pointsRequired: 5000 },

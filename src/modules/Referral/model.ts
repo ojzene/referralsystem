@@ -9,6 +9,7 @@ const referralSchema = new Schema<IReferral>({
     referralCode: { type: String, required: true },
     referredUserCode: { type: String, required: true },
     customerTier: { type: ObjectId, ref: 'CustomerTier', required: false },
+    onboardingPoint: { type: Number, default: 0 },
     pointsEarned: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now },
 });
