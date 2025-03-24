@@ -78,34 +78,23 @@ export class ReferralService {
             console.log("Referrer updated: ", referrer);
     
             // Check if referrer has at least 100 points from onboarding
-            // const totalReferralPoints = await ReferralModel.aggregate([
-            //     { $match: { referralCode } },
-            //     { $group: { _id: null, totalPoints: { $sum: "$pointsEarned" } } }
-            // ]);
-            // const onboardingPoints = totalReferralPoints[0]?.totalPoints || 0;
-            // if (onboardingPoints < 100) {
-            //     console.log("Referrer does not qualify for gift redemption. Onboarding points: ", onboardingPoints);
-            //     return {
-            //         success: true,
-            //         statusCode: 201,
-            //         message: 'Referral recorded successfully, but referrer does not qualify for gift redemption',
-            //         data: { referral, totalPoints: userPoints.totalPoints }
-            //     };
-            // }
-
-            // Check if referrer has at least 100 points from onboarding
             const totalReferralPoints = await ReferralModel.aggregate([
-                { $match: { referralCode, referredUserCode: { $ne: null } } },
-                { $group: { _id: null, totalPoints: { $sum: "$pointsEarned" } } }
+                {   $match: { referralCode, referredUserCode: { $ne: null } } },
+                {   $group: { 
+                        _id: null, 
+                        totalOnboardingPoints: { $sum: "$onboardingPoint" }, 
+                        totalEarnedPoints: { $sum: "$pointsEarned" } 
+                    } 
+                }
             ]);
-            const onboardingPoints = totalReferralPoints[0]?.totalPoints || 0;
+            const onboardingPoints = totalReferralPoints[0]?.totalOnboardingPoints || 0;
             if (onboardingPoints < 100) {
                 console.log("Referrer does not qualify for gift redemption. Onboarding points: ", onboardingPoints);
                 return {
                     success: true,
                     statusCode: 201,
                     message: 'Referral recorded successfully, but referrer does not qualify for gift redemption',
-                    data: { referral, totalPoints: userPoints.totalPoints }
+                    data: { referral, totalPoints: userPoints.totalPoints, onboardingPoints: onboardingPoints}
                 };
             }
     
@@ -113,7 +102,7 @@ export class ReferralService {
                 success: true,
                 statusCode: 201,
                 message: 'Referral recorded successfully',
-                data: { referral, totalPoints: userPoints.totalPoints }
+                data: { referral, totalPoints: userPoints.totalPoints, onboardingPoints: onboardingPoints }
             };
         } catch (error) {
             console.error("recordReferral processing error: ", error);
@@ -349,8 +338,6 @@ export class ReferralService {
     public deletePointRules = async(parsedParams: any) => {
         const { pointRuleId } = parsedParams;
         try {
-            // const transactionType = await TransactionTypeModel.findById(transactionTypeId);
-            // if (!transactionType) return { success: false, statusCode: 404, message: 'Transaction Type not found' };
             const pointRules = await PointRulesModel.findByIdAndDelete(pointRuleId);
             return { success: true, statusCode: 200, message: 'Point rules deleted successfully', data: pointRules };
         } catch (error) {
@@ -389,33 +376,35 @@ export class ReferralService {
         } catch (error) {
             return { success: false, statusCode: 500, message: 'Error deleting gift', data: error };
         }
-    }
+    }  
 
     public redeemGift = async (parsedBody: any) => {
         const { userId, giftId } = parsedBody;
         try {
             const user = await PocketUserModel.findById(userId);
-            if (!user) return { success: false, statusCode: 404, message: 'User not found' };
-            
-            if(user) {
-                // Check if referrer has at least 100 points from onboarding
+            if (user) {
                 const referralCode = user.referralCode;
                 console.log("referralCode---", referralCode);
-                const referral = await ReferralModel.findOne({ referralCode });
-                if (!referral) return { success: false, statusCode: 404, message: 'User Referral Info not found' };
-
+                const referrals = await ReferralModel.find({ referralCode });
+                if (!referrals || referrals.length === 0) return { success: false, statusCode: 404, message: 'User Referral Info not found' };
+    
                 const totalReferralPoints = await ReferralModel.aggregate([
                     { $match: { referralCode, referredUserCode: { $ne: null } } },
-                    { $group: { _id: null, totalPoints: { $sum: "$pointsEarned" } } }
+                    { $group: { 
+                            _id: null, 
+                            totalOnboardingPoints: { $sum: "$onboardingPoint" }, 
+                            totalEarnedPoints: { $sum: "$pointsEarned" } 
+                        } 
+                    }
                 ]);
-                const onboardingPoints = totalReferralPoints[0]?.totalPoints || 0;
+                const onboardingPoints = totalReferralPoints[0]?.totalOnboardingPoints || 0;
                 if (onboardingPoints < 100) {
                     console.log("Referrer does not qualify for gift redemption. Onboarding points: ", onboardingPoints);
                     return {
                         success: true,
-                        statusCode: 201,
+                        statusCode: 200,
                         message: 'User does not qualify for gift redemption, not enough onboarding points',
-                        data: { referral, onboardingPoints: onboardingPoints }
+                        data: { referrals, onboardingPoints: onboardingPoints }
                     };
                 }
         
@@ -428,7 +417,7 @@ export class ReferralService {
                 if (userPoints.totalPoints < gift.pointsRequired) {
                     return { success: false, statusCode: 400, message: 'Not enough points to redeem this gift' };
                 }
-
+    
                 if (gift.quantity <= 0) {
                     return { success: false, statusCode: 400, message: 'Gift is out of stock' };
                 }
@@ -438,8 +427,10 @@ export class ReferralService {
                 gift.claimedBy.push(userId);
                 await userPoints.save();
                 await gift.save();
-
+    
                 return { success: true, statusCode: 200,  message: 'Gift redeemed successfully', data: { gift, remainingPoints: userPoints.totalPoints } };
+            } else {
+                return { success: false, statusCode: 404, message: 'User not found' };
             }
         } catch (error) {
             return { success: false, statusCode: 500, message: 'Error processing gift redemption', data: error };
@@ -448,14 +439,50 @@ export class ReferralService {
 
     public getLeaderboard = async () => {
         try {
-            const leaderboard = await PointModel.find().populate({
-                path: 'userId',
-                model: 'PocketUser',
-                select: 'firstName lastName email phoneNumber',
-            }).sort({ totalPoints: -1 }).limit(20);
-            return { success: true, statusCode: 200, message: 'Leaderboard successfully fetched', data: leaderboard };
+            const leaderboard = await PointModel.find()
+                .populate({
+                    path: 'userId',
+                    model: 'PocketUser',
+                    select: 'firstName lastName email phoneNumber referralCode',
+                })
+                .sort({ totalPoints: -1 })
+                .limit(20);
+    
+            // Fetch total onboarding points for each user
+            const onboardingPoints = await ReferralModel.aggregate([
+                { $match: { referredUserCode: { $ne: null } } },
+                { $group: { _id: "$referralCode", totalOnboardingPoints: { $sum: "$onboardingPoint" } } }
+            ]);
+    
+            // Create a map of referralCode to totalOnboardingPoints
+            const onboardingPointsMap = onboardingPoints.reduce((acc, item) => {
+                acc[item._id] = item.totalOnboardingPoints;
+                return acc;
+            }, {});
+    
+            // Merge onboarding points with leaderboard data
+            const leaderboardWithOnboarding = leaderboard.map(entry => {
+                const referralCode = entry.userId.referralCode;
+                const totalOnboardingPoints = onboardingPointsMap[referralCode] || 0;
+                return {
+                    ...entry.toObject(),
+                    totalOnboardingPoints
+                };
+            });
+    
+            return { 
+                success: true, 
+                statusCode: 200, 
+                message: 'Leaderboard successfully fetched', 
+                data: leaderboardWithOnboarding 
+            };
         } catch (error) {
-            return { success: false, statusCode: 500, message: 'Error fetching leaderboard', data: error };
+            return { 
+                success: false, 
+                statusCode: 500, 
+                message: 'Error fetching leaderboard', 
+                data: error 
+            };
         } 
     }
 
@@ -482,15 +509,35 @@ export class ReferralService {
             const points = await PointModel.find()
                 .populate({
                     path: 'userId',
-                    model: 'PocketUser', // Ensure this matches your User model name
-                    select: 'firstName lastName email phoneNumber', // Specify the fields you need
+                    model: 'PocketUser',
+                    select: 'firstName lastName email phoneNumber referralCode',
                 });
+    
+            const onboardingPoints = await ReferralModel.aggregate([
+                { $match: { referredUserCode: { $ne: null } } },
+                { $group: { _id: "$referralCode", totalOnboardingPoints: { $sum: "$onboardingPoint" } } }
+            ]);
+            console.log("onboardingPoints: ", onboardingPoints);
+    
+            const onboardingPointsMap = onboardingPoints.reduce((acc, item) => {
+                acc[item._id] = item.totalOnboardingPoints;
+                return acc;
+            }, {});
+    
+            const pointsWithOnboarding = points.map(point => {
+                const referralCode = point.userId.referralCode;
+                const totalOnboardingPoints = onboardingPointsMap[referralCode] || 0;
+                return {
+                    ...point.toObject(),
+                    totalOnboardingPoints
+                };
+            });
     
             return { 
                 success: true, 
                 statusCode: 200, 
                 message: 'Points successfully fetched', 
-                data: points 
+                data: pointsWithOnboarding 
             };
         } catch (error) {
             return { 
@@ -502,7 +549,6 @@ export class ReferralService {
         } 
     }
     
-    // Function to Calculate Points Dynamically
     private calculatePoints = async (transactionType: any, amount: any) => {
         const rules = await PointRulesModel.find({ type: transactionType });
         console.log("point rules: ", rules);
